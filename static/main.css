@@ -33,7 +33,7 @@ a:hover {
     background-color: #242424;
 }
 
-.control .button:hover {
+.button:hover {
     background-color: hsl(0, 0%, 15%);
     color: hsl(0, 0%, 96%);
 }

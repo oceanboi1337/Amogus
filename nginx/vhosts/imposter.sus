@@ -1,0 +1,1 @@
+include /etc/nginx/upstreams/imposter.sus;server{	server_name imposter.sus www.imposter.sus;	location /	{		proxy_pass http://imposter.sus;	}}

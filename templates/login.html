@@ -33,8 +33,34 @@
         </div>
     </nav>
     <div class="section">
-        <h1 class="title has-text-centered has-text-light">Login</h1>
-        <h2 class="subtitle has-text-centered"><a href="#">http://app1.amogus.com</a></h2>
+        <div class="columns is-centered">
+            <div class="column is-half">
+                <h1 class="title has-text-centered has-text-light">Login</h1>
+                <div class="box">
+                    <form action="/login" method="POST">
+                        <div class="field">
+                            <label class="label has-text-light">E-Mail</label>
+                            <div class="control has-icons-left">
+                                <input class="input" type="email" placeholder="sussy@amogus.sus" name="email">
+                                <span class="icon is-small is-left">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label has-text-light">Password</label>
+                            <div class="control has-icons-left">
+                                <input class="input" type="password" placeholder="Password" name="password">
+                                <span class="icon is-small is-left">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <button class="button is-fullwidth button has-background-black-ter">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
