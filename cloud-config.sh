@@ -38,8 +38,9 @@ ufw enable
 # User Creation & Setup
 PASSWORD=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-32} | head -1)
 useradd -d /home/cloudman -s /bin/bash -p $(openssl passwd -1 $PASSWORD) cloudman
-mkdir /home/cloudman && chown -R cloudman:cloudman /home/cloudman && cp -rT /etc/skel /home/cloudman
+mkdir /home/cloudman && cp -rT /etc/skel /home/cloudman
 mkdir /home/cloudman/.ssh && echo 'BACKEND_SSH_KEY' >> /home/cloudman/.ssh/authorized_keys && chmod 600 /home/cloudman/.ssh/authorized_keys
+chown -R cloudman:cloudman /home/cloudman
 echo 'cloudman ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx' >> /etc/sudoers
 
 # Callback to backend to verify droplet setup.
