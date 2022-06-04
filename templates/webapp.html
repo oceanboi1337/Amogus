@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/static/main.css">
+    <title>Document</title>
+</head>
+<body class="has-background-black-ter">
+    <nav class="navbar has-background-black-bis" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item title has-text-light" href="/"><h1>Amogus</h1></a>
+        </div>
+
+        <div id="navbar-menu" class="navbar-menu">
+            <div class="navbar-start">
+                <a href="/" class="navbar-item has-text-light">Home</a>
+                <a href="/webapp" class="navbar-item has-text-light">Web App</a>
+            </div>
+
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <a href="/register" class="button has-background-black-ter">Register</a>
+                        <a href="/login" class="button has-background-black-ter">Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="section">
+        <h1 class="title has-text-centered has-text-light">Your Web App</h1>
+        <h2 class="subtitle has-text-centered"><a href="#">http://app1.amogus.com</a></h2>
+    </div>
+    <div class="section">
+        <h1 class="title has-text-centered has-text-light">App Configuration</h1>
+        <div class="columns">
+            <div class="column is-half">
+                <h1 class="subtitle has-text-centered has-text-light">Web Files</h1>
+                <div class="box content">
+                    <dl>
+                        <dt class="has-text-light">root/</dt>
+                        <dd class="has-text-light">.</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="column is-half">
+                <h1 class="subtitle has-text-centered has-text-light">Deployment</h1>
+                <div class="box">
+                    <h2 class="subtitle has-text-light">Zip file to deploy</h2>
+                    <form class="deployment-form" action="/webapp" method="POST" enctype="multipart/form-data">
+                        <div class="field">
+                            <p class="control has-icons-left">
+                                <input class="input" type="text" placeholder="example.com" name="domain">
+                                <span class="icon is-small is-left">
+                                    <i class="fas fa-globe"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="file has-name is-fullwidth">
+                            <label class="file-label has-background-black-ter">
+                                <input type="file" class="file-input" name="file">
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                        Choose a file...
+                                    </span>
+                                </span>
+                                <span class="file-name has-text-light">
+                                    WebApp.zip
+                                </span>
+                            </label>
+                        </div>
+                        <div class="field mt-5">
+                            <div class="control">
+                                <button class="button is-fullwidth">Deploy</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

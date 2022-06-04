@@ -1,0 +1,39 @@
+html, body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+a:hover {
+    background-color: hsl(0, 0%, 21%) !important;
+    color: hsl(0, 0%, 96%) !important;
+}
+
+.button {
+    border: none;
+    color: hsl(0, 0%, 96%);
+}
+
+.box {
+    background-color:hsl(0, 0%, 21%);
+}
+
+.input {
+    background-color:hsl(0, 0%, 15%);
+    color:hsl(0, 0%, 96%);
+    border: none;
+}
+
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color:hsl(0, 0%, 96%) !important;
+    opacity: 1 !important; /* Firefox */
+}
+
+.control .button {
+    background-color: #242424;
+}
+
+.control .button:hover {
+    background-color: hsl(0, 0%, 15%);
+    color: hsl(0, 0%, 96%);
+}
