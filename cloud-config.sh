@@ -25,7 +25,7 @@ sed -i 's/fd:\/\//fd:\/\/ -H tcp:\/\/0.0.0.0:2375/g' /lib/systemd/system/docker.
 systemctl daemon-reload
 systemctl restart docker.service
 
-# Download Nginx docker aimge.
+# Download Nginx docker image.
 docker pull nginx:alpine
 
 # Firewall Configuration.
@@ -38,8 +38,9 @@ ufw enable
 # User Creation & Setup
 PASSWORD=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-32} | head -1)
 useradd -d /home/cloudman -s /bin/bash -p $(openssl passwd -1 $PASSWORD) cloudman
+mkdir /home/cloudman && chown -R cloudman:cloudman /home/cloudman && cp -rT /etc/skel /home/cloudman
+mkdir /home/cloudman/.ssh && echo 'BACKEND_SSH_KEY' >> /home/cloudman/.ssh/authorized_keys && chmod 600 /home/cloudman/.ssh/authorized_keys
 echo 'cloudman ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx' >> /etc/sudoers
-echo 'BACKEND_SSH_KEY' >> /home/cloudman/.ssh/authorized_keys
 
 # Callback to backend to verify droplet setup.
 droplet_id=$(curl -s http://169.254.169.254/metadata/v1.json | python3 -c "import sys, json; print(json.load(sys.stdin)['droplet_id'])")
