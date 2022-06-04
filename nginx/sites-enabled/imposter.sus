@@ -2,6 +2,6 @@ server {
     server_name imposter.sus www.imposter.sus;
 
     location / {
-        proxy_pass: http://172.17.0.4;
+        proxy_pass http://172.17.0.2;
     }
 }
