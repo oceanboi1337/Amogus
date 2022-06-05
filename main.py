@@ -20,7 +20,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 # File Upload Config
 app.config['MAX_CONTENT_PATH'] = (1024 ** 2) * 500 # 500 MB
 
-db = database.Database(config['db']['host'], config['db']['user'], config['db']['password'], config['db']['db'])
+db = database.Database(config['db']['host'], config['db']['user'], config['db']['pass'], config['db']['db'])
 digitalocean = DigitalOcean(config['digitalocean']['api_key'])
 loadbalancer = Loadbalancer('10.114.0.3')
 docker = Docker(db)
@@ -128,6 +128,7 @@ def webapp():
                 container.start()
                 break
             except Exception as e:
+                logging.error(e)
                 return flask.render_template('webapp.html'), 500
 
         if container != None and droplet != None:
@@ -156,7 +157,7 @@ def callback():
                     loadbalancer.add_domain(webapp.get('domain'), droplet)
                     db.activate_webapp(webapp.get('domain'))
                 except Exception as e:
-                    logger.debug(e)
+                    logger.error(e)
 
             return flask.jsonify({'data': 'success'})
 

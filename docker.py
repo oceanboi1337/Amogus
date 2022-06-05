@@ -1,6 +1,5 @@
 import logging
 from typing import List
-from xmlrpc.client import Server
 import requests, digitalocean
 
 class BadParameter(Exception): pass
@@ -25,7 +24,7 @@ class Container:
                         return True
         return False
 
-class Docker:   
+class Docker:
     def __init__(self, database) -> None:
         self.database = database
 
