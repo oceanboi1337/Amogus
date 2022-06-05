@@ -105,16 +105,17 @@ def webapp():
         # Create container for app
         container = None
         droplet = None
-        droplets = db.active_droplets()
+        droplets = db.droplets(active=True)
 
-        if not len(droplets) > 0:
+        if not len(droplets) > 0 and len(db.droplets(active=False)) <= 0:
             hostname = f'app-node-{len(droplets)+1}'
-            droplet = digitalocean.create_droplet(hostname, CloudSize.Cpu2Gb2, CloudImage.Ubuntu_22_04_LTS_x64, CloudRegion.Frankfurt1)
-
+            droplet = digitalocean.create_droplet(hostname, CloudSize.Cpu2Gb2, CloudImage.Ubuntu_22_04_LTS_x64, CloudRegion.Frankfurt1, ['app-node'])
+        
             if droplet != None:
-                return flask.render_template('webapp.html', message='Your WebApp will be deployed soon.')
-            else:
-                return flask.render_template('webapp.html'), 500
+                if db.register_droplet(droplet):
+                    return flask.render_template('webapp.html', message='Your WebApp will be deployed soon.')
+                else: return flask.render_template('webapp.html'), 500
+            else: return flask.render_template('webapp.html'), 500
 
         for droplet_id in droplets:
 
@@ -145,12 +146,12 @@ def callback():
     if secret == '80c5e536eec8387cccad28b8b17b933832244998d85918abf18cc9bada5d4fe9' and droplet_id != None:
 
         droplet = digitalocean.droplet(droplet_id)
-        if droplet != None and db.activate_droplet(droplet):
+        if droplet != None:
+            db.activate_droplet(droplet)
 
             for webapp in db.webapps(active=False):
-
                 try:
-                    container = docker.create(webapp.get('domain'))
+                    container = docker.create(webapp.get('domain'), droplet)
                     container.start()
 
                     loadbalancer.add_domain(webapp.get('domain'), container)

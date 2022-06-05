@@ -1,6 +1,7 @@
 import requests
 from typing import List
 from enum import Enum
+import logging
 
 class CloudRegion(str, Enum):
     NewYork1 = 'nyc1'
@@ -53,5 +54,26 @@ class DigitalOcean:
         
         return None
 
+    def ssh_key(self, fingerprint : str):
+        with self.session.get(f'{self.endpoint}/account/keys/{fingerprint}') as resp:
+            return resp.json()['ssh_key']['public_key']
+
     def create_droplet(self, hostname, size : CloudSize, image : CloudImage, region : CloudRegion, tags : List[str]) -> Droplet:
-        pass
+        with open('scripts/cloud-init.sh', 'r') as f:
+            data = {
+                'name': hostname,
+                'region': region,
+                'size': size,
+                'image': image,
+                'ssh_keys': [
+                    'f4:bb:99:fe:80:77:fb:ff:1c:e7:3c:dd:12:9c:9c:af'   # System Administrator
+                ],
+                'tags': tags,
+                'user_data': f.read().replace('BACKEND_SSH_KEY', self.ssh_key('96:9f:f7:09:fc:2d:e7:bb:76:d3:fa:4d:2e:08:42:5b')) # backend@backend
+            }
+        
+        with self.session.post(f'{self.endpoint}/droplets', json=data) as resp:
+            if resp.status_code == 202:
+                return Droplet(resp.json()['droplet'])
+        
+        return None
