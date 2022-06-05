@@ -1,0 +1,12 @@
+upstream imposter.sus
+{
+	server 10.114.0.4;
+}
+server
+{
+	server_name imposter.sus www.imposter.sus;
+	location /
+	{
+		proxy_pass http://droplets;
+	}
+}

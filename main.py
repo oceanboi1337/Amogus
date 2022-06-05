@@ -1,8 +1,14 @@
-import json
+from asyncio.log import logger
+import json, logging
 import flask, bcrypt, os, hashlib, time, magic, zipfile, io
-import database, containers, droplets
+import database
+from digitalocean import DigitalOcean, CloudRegion, CloudImage, CloudSize
+from docker import Docker
+from loadbalancer import Loadbalancer
 
 app = flask.Flask(__name__)
+
+logging.basicConfig(filename='backend.log', level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
 with open('config.json') as f:
     config = json.load(f)
@@ -15,8 +21,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MAX_CONTENT_PATH'] = (1024 ** 2) * 500 # 500 MB
 
 db = database.Database(config['db']['host'], config['db']['user'], config['db']['password'], config['db']['db'])
-droplet_manager = droplets.DropletManager(db, config['digitalocean']['api_key'])
-container_manager = containers.ContainerManager(db, droplet_manager)
+digitalocean = DigitalOcean(config['digitalocean']['api_key'])
+loadbalancer = Loadbalancer('10.114.0.3')
+docker = Docker(db)
 
 @app.route('/', methods=['GET'])
 def index():
@@ -96,12 +103,36 @@ def webapp():
             return flask.render_template('webapp.html'), 500
 
         # Create container for app
-        container = container_manager.create(domain=domain)
+        container = None
+        droplet = None
+        droplets = db.active_droplets()
 
-        if container != None:
-            db.activate_webapp(domain)
-        else:
-            return flask.render_template('webapp.html', status='Your WebApp will be deployed shortly.')
+        if not len(droplets) > 0:
+            hostname = f'app-node-{len(droplets)+1}'
+            droplet = digitalocean.create_droplet(hostname, CloudSize.Cpu2Gb2, CloudImage.Ubuntu_22_04_LTS_x64, CloudRegion.Frankfurt1)
+
+            if droplet != None:
+                return flask.render_template('webapp.html', message='Your WebApp will be deployed soon.')
+            else:
+                return flask.render_template('webapp.html'), 500
+
+        for droplet_id in droplets:
+
+            droplet = digitalocean.droplet(droplet_id)
+
+            if droplet == None:
+                return flask.render_template('webapp.html'), 500
+
+            try:
+                container = docker.create(domain, droplet)
+                container.start()
+                break
+            except Exception as e:
+                return flask.render_template('webapp.html'), 500
+
+        if container != None and droplet != None:
+            loadbalancer.add_domain(domain, container)
+            loadbalancer.add_domain(domain, droplet)
 
         return flask.render_template('webapp.html')
 
@@ -112,14 +143,20 @@ def callback():
 
     if secret == '80c5e536eec8387cccad28b8b17b933832244998d85918abf18cc9bada5d4fe9' and droplet_id != None:
 
-        droplet = droplet_manager.fetch(droplet_id)
-
+        droplet = digitalocean.droplet(droplet_id)
         if droplet != None and db.activate_droplet(droplet):
-            for webapp in db.webapps(active=False):
-                container = container_manager.create(domain=webapp.get('domain'))
 
-                if container != None:
-                    db.activate_webapp(domain=webapp.get('domain'))
+            for webapp in db.webapps(active=False):
+
+                try:
+                    container = docker.create(webapp.get('domain'))
+                    container.start()
+
+                    loadbalancer.add_domain(webapp.get('domain'), container)
+                    loadbalancer.add_domain(webapp.get('domain'), droplet)
+                    db.activate_webapp(webapp.get('domain'))
+                except Exception as e:
+                    logger.debug(e)
 
             return flask.jsonify({'data': 'success'})
 

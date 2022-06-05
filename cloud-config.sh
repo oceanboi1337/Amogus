@@ -2,15 +2,13 @@
 
 # Package Installation.
 apt update -y
-apt install nginx -y
-apt install docker.io -y
-apt install nfs-common -y
+apt install nginx docker.io nfs-common -y
 
 # NFS Configuration
 mount -t nfs 10.114.0.2:/var/www /var/www
-mount -t nfs 10.114.0.2:/home/backend/backend/nginx/sites-enabled /etc/nginx/sites-enabled
+mount -t nfs 10.114.0.2:/home/backend/backend/nginx/droplet-loadbalancer /etc/nginx/sites-enabled
 echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstab
-echo '10.114.0.2:/home/backend/backend/nginx/sites-enabled /etc/nginx/sites-enabled  nfs _netdev 0' >> /etc/fstab
+echo '10.114.0.2:/home/backend/backend/nginx/droplet-loadbalancer /etc/nginx/sites-enabled  nfs _netdev 0' >> /etc/fstab
 
 # Swap Memory Configuration.
 fallocate -l 4G /swapfile

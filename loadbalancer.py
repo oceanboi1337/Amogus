@@ -1,38 +1,47 @@
-import droplets, os
+from typing import List, Union
+from digitalocean import Droplet
+from docker import Container
+import os, logging
 
-def flush():
-    os.system('ssh -o "StrictHostKeyChecking no" cloudman@10.114.0.3 "sudo systemctl reload nginx"')
+class Loadbalancer:
+    def __init__(self, host : str) -> None:
+        self.host = host
 
-def add_upstream(domain : str, droplet : 'droplets.Droplet'):
-    with open(f'nginx/upstreams/{domain}', 'w+') as f:
-        config = f.readlines()
+    def indent_config(self, config : List[str]):
+        parsed_config = ''
+        indentation = 0
 
-        if not len(config) > 0:
-            config = [f'upstream {domain}', '{', '}']
+        for x in config:
+            if x == '}': indentation -= 1
+            parsed_config += ('\t' * indentation) + x + '\n'
+            if x == '{': indentation += 1
 
-        config.insert(2,f'\tserver {droplet.private_ip};')
+        return parsed_config
 
-        f.writelines(config)
-    flush()
+    def reload_nginx(self, node : Union[Droplet, Container]):
+        host = self.host if type(node) == Droplet else node.private_ip
+        os.system(f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{host} "sudo systemctl reload nginx"')
 
-def remove_upstream(domain : str, droplet : 'droplets.Droplet'):
-    with open(f'nginx/upstreams/{domain}', 'w+') as f:
-        config = f.readlines()
-        config = [x for x in config if f'server {droplet.private_ip}' not in x]
+    def add_domain(self, domain : str, node : Union[Droplet, Container]):
+        path = f'nginx/main-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/droplet-loadbalancer/{domain}'
 
-        f.writelines(config)
-    flush()
+        with open(path, 'w+') as f:
+            config = f.read().split('\n')
+            if len(config) > 1:
+                config.insert(2, f'\tserver {node.private_ip};')
+            else:
+                config = [f'upstream {domain}', '{', f'server {node.private_ip};', '}', 'server', '{', f'server_name {domain} www.{domain};', 'location /', '{', f'proxy_pass http://{domain};', '}', '}']
 
-def add_vhost(domain : str):
-    with open(f'nginx/vhosts/{domain}', 'w+') as f:
-        config = [f'include /etc/nginx/upstreams/{domain};', 'server', '{', f'\tserver_name {domain} www.{domain};', '\tlocation /', '\t{', f'\t\tproxy_pass http://{domain};', '\t}' '}']
-        f.writelines(config)
-    flush()
+            f.write(self.indent_config(config))
 
-def remove_vhost(domain : str):
-    if os.path.exists(f'nginx/vhosts/{domain}'):
-        os.remove(f'nginx/vhosts/{domain}')
-    
-    if os.path.exists(f'nginx/upstreams/{domain}'):
-        os.remove(f'nginx/upstreams/{domain}')
-    flush()
+        self.reload_nginx(node)
+
+    def remove_domain(self, domain : str, node : Union[Droplet, Container]):
+        path = f'nginx/main-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/droplet-loadbalancer/{domain}'
+
+        with open(path, 'w+') as f:
+            config = f.read().split('\n')
+            config = [x for x in config if x != f'server {node.private_ip};']
+            f.write(self.indent_config(config))
+
+        self.reload_nginx(node)

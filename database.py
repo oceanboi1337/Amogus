@@ -1,6 +1,5 @@
 import pymysql, pymysql.cursors, time, bcrypt
 from typing import List
-import containers, droplets
 
 class Database:
     def __init__(self, host, user, password, db) -> None:
