@@ -7,6 +7,6 @@ server
 	server_name imposter.sus www.imposter.sus;
 	location /
 	{
-		proxy_pass http://droplets;
+		proxy_pass http://imposter.sus;
 	}
 }

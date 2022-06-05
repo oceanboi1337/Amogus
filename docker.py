@@ -32,7 +32,12 @@ class Docker:
     def create(self, domain : str, droplet : 'digitalocean.Droplet') -> Container:
         settings = {
             'Image': 'nginx:alpine',
-            'HostConfig': { 'Bind': [f'/var/www/{domain}:/usr/share/nginx/html'] }
+            'HostConfig': {
+                'Binds': [f'/var/www/{domain}:/usr/share/nginx/html'],
+                'Memory': (1024 ** 2) * 500,
+                'MemorySwap': (1024 ** 3),
+                'CpuQuota': 25000
+            }
         }
 
         with requests.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
