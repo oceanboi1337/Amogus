@@ -8,7 +8,7 @@ from loadbalancer import Loadbalancer
 
 app = flask.Flask(__name__)
 
-logging.basicConfig(filename='backend.log', level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+logging.basicConfig(filename='backend.log', level=logging.DEBUG, format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d in function %(funcName)s] %(message)s')
 
 with open('config.json') as f:
     config = json.load(f)
@@ -100,11 +100,13 @@ def webapp():
             f.extractall(f'/var/www/{domain}')
 
         if not db.add_webapp(customer_id, domain):
+            logging.error('failed to add webapp')
             return flask.render_template('webapp.html'), 500
 
         # Create container for app
         container = None
         droplet = None
+
         droplets = db.droplets(active=True)
 
         if not len(droplets) > 0 and len(db.droplets(active=False)) <= 0:
@@ -147,6 +149,7 @@ def callback():
 
         droplet = digitalocean.droplet(droplet_id)
         if droplet != None:
+            
             db.activate_droplet(droplet)
 
             for webapp in db.webapps(active=False):
@@ -161,24 +164,35 @@ def callback():
                     logger.error(e)
 
             return flask.jsonify({'data': 'success'})
-
     return flask.jsonify({'data': 'failed'}), 500
 
 @app.route('/expand', methods=['POST'])
 def expand():
-    domain = flask.request.args.get('domain')
-    
-    for droplet in db.droplets(active=True):
+    container_id = flask.request.args.get('container')
 
-        droplet = digitalocean.droplet(droplet)
+    domain = db.container_app(container_id)
+
+    if domain == None:
+        return flask.json({'success': False}), 404
+
+    for droplet_id in db.droplets(active=True):
+        droplet = digitalocean.droplet(droplet_id)
+
         if droplet == None:
             continue
 
-        container = docker.create(domain, droplet)
-        container.start()
+        try:
+            container = docker.create(domain, droplet)
+            container.start()
 
-        loadbalancer.add_domain(domain, container)
-        loadbalancer.add_domain(domain, droplet)
+            loadbalancer.add_domain(domain, container)
+            #loadbalancer.add_domain(domain, droplet)
+            return flask.jsonify(success=True)
+        except Exception as e:
+            logger.error(e)
+            return flask.jsonify(success=False)
+
+    # Create droplet since none was found
 
 if __name__ == '__main__':
     app.run()

@@ -1,5 +1,6 @@
 # Packages
 apt install nfs-kernel-server -y
+apt install python3-pip python3-dev build-essential libssl-dev libffi-dev python3-setuptools -y
 
 # User Setup
 chown -R backend:backend /var/www
@@ -9,6 +10,7 @@ mkdir -p /home/backend/Amogus/nginx/droplet-loadbalancer
 mkdir -p /home/backend/Amogus/nginx/main-loadbalancer
 chown -R backend:backend
 
+echo '/home/backend/Amogus/nginx 10.114.0.0/20(ro,sync,subtree_check)' >> /etc/exports
 echo '/home/backend/Amogus/nginx 10.114.0.0/20(ro,sync,subtree_check)' >> /etc/exports
 echo '/var/www 10.114.0.0/20(ro,sync,no_subtree_check)' >> /etc/exports
 
@@ -21,3 +23,5 @@ ufw allow ssh
 ufw allow http
 ufw allow from 10.114.0.0/20 proto tcp to any port 2049
 ufw enable
+
+# Flask Virtual Enviroment Setup

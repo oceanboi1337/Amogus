@@ -54,17 +54,18 @@ class Database:
                 logging.error(e)
 
     def add_webapp(self, customer_id : int, domain : str) -> bool:
+        success = True
         with self.connection.cursor() as c:
             try:
                 c.execute('SELECT * FROM webapps WHERE domain=%s', [domain])
                 if len(c.fetchall()) > 0:
-                    return False
-
-                c.execute('INSERT INTO webapps (customer_id, domain) VALUES (%s, %s)', [customer_id, domain])
-                c.connection.commit()
-                return True
+                    success = False
+                else:
+                    c.execute('INSERT INTO webapps (customer_id, domain) VALUES (%s, %s)', [customer_id, domain])
+                    c.connection.commit()
             except Exception as e:
                 logging.error(e)
+        return success
 
     def activate_webapp(self, domain : str):
         with self.connection.cursor() as c:
@@ -85,7 +86,16 @@ class Database:
     def register_container(self, domain : str, container : Container):
         with self.connection.cursor() as c:
             try:
-                c.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s)', [container.id, container.droplet.id, domain])
+                #logging.debug(c.mogrify('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container.id, container.droplet.id, domain]))
+                c.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container.id, container.droplet.id, domain])
                 c.connection.commit()
+            except Exception as e:
+                logging.error(e)
+
+    def container_app(self, container : str):
+        with self.connection.cursor() as c:
+            try:
+                c.execute('SELECT domain FROM webapps INNER JOIN containers ON webapps.id=containers.webapp')
+                return c.fetchone().get('domain')
             except Exception as e:
                 logging.error(e)

@@ -42,7 +42,7 @@ class Docker:
         with requests.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
             if resp.status_code == 201:
                 container = Container(droplet, resp.json())
-                self.database.register_container(container, domain)
+                self.database.register_container(domain, container)
                 return container
 
             elif resp.status_code == 400: raise BadParameter

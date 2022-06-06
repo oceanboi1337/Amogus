@@ -1,0 +1,15 @@
+[Unit]
+Description=Backend Flask Server
+After=network.target
+After=mysql.target
+
+[Service]
+User=backend
+Group=www-data
+
+WorkingDirectory=/home/backend/Amogus
+Environment="PATH=/home/backend/Amogus/amogusenv/bin"
+ExecStart=/home/backend/Amogus/amogusenv/bin/uwsgi --ini amogus.ini
+
+[Install]
+WantedBy=multi-user.target
