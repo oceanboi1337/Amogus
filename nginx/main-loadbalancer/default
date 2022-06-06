@@ -1,0 +1,9 @@
+server
+{
+    server_name _;
+
+    location /
+    {
+        return 444;
+    }
+}
