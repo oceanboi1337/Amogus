@@ -1,76 +1,113 @@
 import asyncio, aiohttp, json
-from typing import List
+from audioop import avg
+from enum import Enum
 
-class Monitor:
-    def __init__(self, backend : str) -> None:
-        self.backend = backend
-        self.session = aiohttp.ClientSession()
-        
-        self.stats = {}
+class BadParameter(Exception): pass
+class ServerError(Exception): pass
+class ContainerNotFound(Exception): pass
+class ContainerNotRunning(Exception): pass
+class ContainerConflict(Exception): pass
 
-    async def calculate_percenteage(self, stats):
-        system_cpu_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
-        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
-        cpus = stats['cpu_stats']['online_cpus']
+class Container:
+    class State(str, Enum):
+        created = 'created'
+        restarting = 'restarting'
+        running = 'running'
+        removing = 'paused'
+        exited = 'exited'
+        dead = 'dead'
 
-        cpu_usage = (cpu_delta / system_cpu_delta) * cpus * 100
-        return cpu_usage
+    def __init__(self, id : str, state : str) -> None:
+        self.id = id
+        self.state = Container.State(state)
 
-    async def delete_container(self, container_id):
-        async with self.session.delete(f'http://localhost:2375/containes{container_id}') as resp:
-            if resp.status == 204:
-                await self.session.delete(f'http://{self.backend}/container?id={container_id}')
+    async def delete(self) -> bool:
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(f'http://localhost:2375/container/{self.id}?force=true') as resp:
+                if resp.status == 204:
+                    return True
+                elif resp.status == 400: raise BadParameter
+                elif resp.status == 404: raise ContainerNotFound
+                elif resp.status == 409: raise ContainerConflict
+                elif resp.status == 500: raise ServerError
 
-    async def get_containers(self):
-        async with self.session.get('http://localhost:2375/containers/json') as resp:
-            data = await resp.json()
-            for container in data:
+        raise Exception(f'Unknown error while deleting {self.id}')
 
-                if container.get('State') in ['paused', 'exited', 'dead']:
-                    self.delete_container(container.get('Id'))
+    async def stats(self):
+        async with aiohttp.ClientSession() as session:
+            async with self.session.get(f'http://localhost:2375/containers/{self.id}/stats?stream=false') as resp:
+                if resp.status == 200:
+                    return self, await resp.json()
+                elif resp.status == 404: raise ContainerNotFound
+                elif resp.status == 500: raise ServerError
 
-                    if container.get('Id') in self.stats:
-                        self.stats.pop(container.get('Id'))
-                else:
-                    yield container
+        raise Exception(f'Unknown error while fetching stats for {self.id}')
 
-    async def fetch_stats(self, container_id):
-        resp = await self.session.get(f'http://localhost:2375/containers/{container_id}/stats?stream=false')
-        return await resp.json()
+async def get_containers():
+    async with aiohttp.ClientSession() as session:
+        async with session.get('http://localhost:2375/containers/json?all=true') as resp:
+            if resp.status == 200:
 
-    async def gather_stats(self, delay=10):
-        tasks = []
-        async for container in self.get_containers():
-            tasks.append(self.fetch_stats(container.get('Id')))
+                # Convert the JSON responses to Python objects
+                for container in [Container(x['Id'], x['State']) for x in await resp.json()]:
+                    if container.state == Container.State.running:
+                        yield container
 
-        stats = await asyncio.gather(*tasks, return_exceptions=True)
+                    elif container.state == Container.State.dead: await container.delete()
+                    elif container.state == Container.State.exited:
+                        await container.delete()
+                    
+            elif resp.status == 400: raise BadParameter
+            elif resp.status == 500: raise ServerError
 
-        for stat in stats:
-            if self.stats.get(stat['id']) == None:
-                self.stats[stat['id']] = []
+    raise Exception('Unknown error while fetching containers')
 
-            self.stats[stat['id']].append(await self.calculate_percenteage(stat))
+async def calculate_percentage(stats):
+    cur_stats = stats['cpu_stats'] # Previous CPU stats from last query
+    pre_stats = stats['precpu_stats'] # Current CPU stats
 
+    system_cpu_delta = cur_stats['system_cpu_usage']    - pre_stats['system_cpu_usage']
+    cpu_delta = cur_stats['cpu_usage']['total_usage']   - pre_stats['cpu_usage']['total_usage']
 
-async def load_report(stats):
-    for container in stats:
-        total_percentage = 0
-        for percentage in stats[container]:
-            total_percentage += percentage
+    return (cpu_delta / system_cpu_delta) * cur_stats['online_cpus'] * 100
 
-        average_cpu_usage = total_percentage / len(stats[container])
-        print(average_cpu_usage)
+async def average_load(containers, time):
+    results = {}
+    for x in range(time):
+
+        # Creates a task for ecah container so they can be queried in parallel
+        tasks = [container.stats() for container in containers]
+
+        for container, stats in await asyncio.gather(*tasks, return_exceptions=True):
+
+            if container.id not in results:
+                results[container.id] = []
+
+            results[container.id].append(await calculate_percentage(stats))
+
+        await asyncio.sleep(1)
+
+    # Calculates the average CPU usage from all the different times it was queried
+    for container_id, load in results.items():
+        total = 0
+
+        for cpu_usage in load:
+            total += cpu_usage
+
+        avg_load = total / len(results[container_id])
+        yield container_id, avg_load
 
 async def main():
-    monitor = Monitor('10.114.0.2')
-    i = 0
+    cpu_limit = 25 # CPU usage limit each container can use is 25%
 
     while 1:
-        await monitor.gather_stats()
-        if i % 60 == 0:
-            await load_report(monitor.stats)
-            monitor.stats = {}
-        i += 1
+
+        # Gets the average CPU usage of a container over 5 seconds
+        async for container, load in average_load([container async for container in get_containers()], time=5):
+            
+            if load > cpu_limit:
+                pass
+
 
 if __name__ == '__main__':
     asyncio.run(main())
