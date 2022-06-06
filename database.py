@@ -81,3 +81,11 @@ class Database:
                 return c.fetchall()
             except Exception as e:
                 logging.error(e)
+
+    def register_container(self, domain : str, container : Container):
+        with self.connection.cursor() as c:
+            try:
+                c.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s)', [container.id, container.droplet.id, domain])
+                c.connection.commit()
+            except Exception as e:
+                logging.error(e)

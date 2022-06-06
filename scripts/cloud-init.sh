@@ -7,7 +7,7 @@ apt install nginx docker.io nfs-common -y
 # NFS Configuration
 mount -t nfs 10.114.0.2:/var/www /var/www
 mount -t nfs 10.114.0.2:/home/backend/Amogus/nginx/droplet-loadbalancer /etc/nginx/sites-enabled
-echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstab
+echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstabs
 echo '10.114.0.2:/home/backend/Amogus/nginx/droplet-loadbalancer /etc/nginx/sites-enabled  nfs _netdev 0' >> /etc/fstab
 
 # Swap Memory Configuration.

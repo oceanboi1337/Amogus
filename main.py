@@ -164,5 +164,21 @@ def callback():
 
     return flask.jsonify({'data': 'failed'}), 500
 
+@app.route('/expand', methods=['POST'])
+def expand():
+    domain = flask.request.args.get('domain')
+    
+    for droplet in db.droplets(active=True):
+
+        droplet = digitalocean.droplet(droplet)
+        if droplet == None:
+            continue
+
+        container = docker.create(domain, droplet)
+        container.start()
+
+        loadbalancer.add_domain(domain, container)
+        loadbalancer.add_domain(domain, droplet)
+
 if __name__ == '__main__':
     app.run()

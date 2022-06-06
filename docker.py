@@ -1,6 +1,6 @@
 import logging
 from typing import List
-import requests, digitalocean
+import requests, digitalocean, database
 
 class BadParameter(Exception): pass
 class ImageNotFound(Exception): pass
@@ -8,9 +8,9 @@ class Conflict(Exception): pass
 class ServerError(Exception): pass
 
 class Container:
-    def __init__(self, droplet : 'digitalocean.Droplet', id : str) -> None:
+    def __init__(self, droplet : 'digitalocean.Droplet', raw_data) -> None:
         self.droplet = droplet
-        self.id = id
+        self.id = raw_data.get('Id')
         self.session = requests.Session()
 
         self.private_ip = None
@@ -25,7 +25,7 @@ class Container:
         return False
 
 class Docker:
-    def __init__(self, database) -> None:
+    def __init__(self, database : 'database.Database') -> None:
         self.database = database
 
     def create(self, domain : str, droplet : 'digitalocean.Droplet') -> Container:
@@ -40,16 +40,14 @@ class Docker:
         }
 
         with requests.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
-            logging.debug(resp.text)
             if resp.status_code == 201:
-                return Container(droplet, resp.json().get('Id'))
-            elif resp.status_code == 400:
-                raise BadParameter
-            elif resp.status_code == 404:
-                raise ImageNotFound
-            elif resp.status_code == 409:
-                raise Conflict
-            elif resp.status_code == 500:
-                raise ServerError
+                container = Container(droplet, resp.json())
+                self.database.register_container(container, domain)
+                return container
 
-        raise Exception('Unknown Error')
+            elif resp.status_code == 400: raise BadParameter
+            elif resp.status_code == 404: raise ImageNotFound
+            elif resp.status_code == 409: raise Conflict
+            elif resp.status_code == 500: raise ServerError
+        
+        raise Exception('Unknown error while creating container')
