@@ -49,13 +49,20 @@ def post():
         return flask.render_template('webapp.html', message='Failed to deploy your WebApp, try again later')
 
     # Iterate every droplet in the database to try create a container on it.
-    for droplet in [digitalocean.fetch_droplet(droplet.get('id')) for droplet in droplets]:
+    for droplet in droplets:
+
+        if (droplet := digitalocean.fetch_droplet(droplet.get('id'))) == None:
+            continue
+
         if droplet.available_slots() > 0: # Implement later
             if container := docker.create(domain, droplet):
+
                 database.new_container(domain, container.id, droplet.id)
                 database.activate_webapp(domain)
+
                 loadbalancer.add(domain, container)
                 loadbalancer.add(domain, droplet)
+
                 return flask.render_template('webapp.html', message='Your WebApp has been deployed')
 
     # Create a new droplet since there was none with any available slots.

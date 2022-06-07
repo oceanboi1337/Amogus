@@ -19,8 +19,6 @@ def callback():
             droplets = [x.get('id') for x in database.droplets()]
             webapps = [x.get('domain') for x in database.webapps(active=False)]
 
-            logging.debug(droplets)
-
             if len(droplets) > 0:
                 for droplet_id in droplets:
                     if (droplet := digitalocean.fetch_droplet(droplet_id)) and droplet.available_slots() > 0:
