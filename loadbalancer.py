@@ -39,7 +39,7 @@ class Loadbalancer:
             mode = 'w+' if not os.path.exists(path) else 'r+'
 
             with open(path, mode) as f:
-                if (config := f.read().split('\n')) and mode == 'r+':
+                if (config := f.read().replace('\t', '').split('\n')) and mode == 'r+':
                     if f'server {node.private_ip};' not in config:
                         config.insert(2, f'server {node.private_ip};')
                     config = self.indent(config)
@@ -56,15 +56,15 @@ class Loadbalancer:
     def remove(self, domain : str, node : Union[Droplet, Container]):
         if type(node) == Container:
             with open(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}', 'r+') as f:
-                config = f.read().split('\n')
-                config = [x for x in config if x != f'server {node.private_ip};']
+                config = f.read().replace('\t', '').split('\n')
+                config = [x for x in config if node.private_ip not in x]
 
-                if 'server ' not in config:
+                if 'server ' not in ''.join(config):
                     f.close()
                     os.remove(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}')
                 else:
                     f.seek(0)
-                    f.write(self.indent_config(config))
+                    f.write(self.indent(config))
                     f.truncate()
         elif type(node) == Droplet:
             path = f'nginx/droplet-loadbalancer/{node.id}'

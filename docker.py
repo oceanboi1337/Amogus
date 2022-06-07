@@ -1,3 +1,4 @@
+from curses import raw
 import logging
 from typing import List
 import requests
@@ -16,6 +17,8 @@ class Container:
         self.session = requests.Session()
 
         self.private_ip = None
+        if raw_data.get('NetworkSettings'):
+            self.private_ip = raw_data.get('NetworkSettings').get('IPAddress')
 
     def start(self) -> bool:
         with self.session.post(f'http://{self.droplet.private_ip}:2375/containers/{self.id}/start') as resp:

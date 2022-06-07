@@ -22,7 +22,7 @@ class Droplet:
             self.private_ip = data.get('networks').get('v4')[1].get('ip_address')
 
     def available_slots(self) -> int:
-        with self.session.get(f'http://{self.private_ip}/containers/json') as resp:
+        with self.session.get(f'http://{self.private_ip}:2375/containers/json') as resp:
             if resp.status_code == 200:
                 return self.container_limit - len(resp.json())
         return 0

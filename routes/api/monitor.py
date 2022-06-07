@@ -48,7 +48,7 @@ def delete():
 
             container = random.choice(containers)
 
-            if droplet := digitalocean.fetch_droplet(container.get('droplet')): 
+            if droplet := digitalocean.fetch_droplet(container.get('droplet')):
                 if container := docker.container(container.get('container'), droplet):
 
                     if container.delete():

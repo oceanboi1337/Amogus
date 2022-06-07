@@ -95,13 +95,13 @@ async def expand(container):
     async with aiohttp.ClientSession() as session:
         async with session.post(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
             if resp.status == 201 or resp.status == 202:
-                print(resp.json())
+                print(await resp.json())
 
 async def shrink(container):
     async with aiohttp.ClientSession() as session:
         async with session.delete(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
             if resp.status == 201 or resp.status == 202:
-                print(resp.json())
+                print(await resp.json())
 
 async def main():
     cpu_limit = 25 # CPU usage limit each container can use is 25%
