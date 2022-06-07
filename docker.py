@@ -26,9 +26,20 @@ class Container:
                         return True
         return False
 
+    def delete(self) -> bool:
+        with self.session.delete(f'http://{self.droplet.private_ip}:2375/containers/{self.id}?force=true') as resp:
+            if resp.status_code == 204:
+                return True
+        return False
+
 class Docker:
     def __init__(self) -> None:
-        pass
+        self.session = requests.Session()
+
+    def container(self, id : str, droplet : Droplet):
+        with self.session.get(f'http://{droplet.private_ip}:2375/containers/{id}/json') as resp:
+            if resp.status_code == 200:
+                return Container(droplet, resp.json())
 
     def create(self, domain : str, droplet : 'Droplet', start=True) -> 'Container':
         settings = {
@@ -41,7 +52,7 @@ class Docker:
             }
         }
 
-        with requests.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
+        with self.session.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
             if resp.status_code == 201:
                 container = Container(droplet, resp.json())
                 if start: container.start()

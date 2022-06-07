@@ -91,9 +91,20 @@ async def average_load(containers : List[Container], time : int):
         avg_load = total / len(results[container_id])
         yield container_id, avg_load
 
+async def expand(container):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
+            if resp.status == 201 or resp.status == 202:
+                print(resp.json())
+
+async def shrink(container):
+    async with aiohttp.ClientSession() as session:
+        async with session.delete(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
+            if resp.status == 201 or resp.status == 202:
+                print(resp.json())
+
 async def main():
     cpu_limit = 25 # CPU usage limit each container can use is 25%
-    session = aiohttp.ClientSession()
 
     while 1:
 
@@ -101,12 +112,11 @@ async def main():
         async for container, load in average_load([container async for container in get_containers()], time=5):
             
             if load > cpu_limit:
-                print('Expanding container')
-                async with session.post(f'http://10.114.0.2/expand?container={container}') as resp:
-                    if resp.status == 200:
-                        print('Expanded container')
-
-    await session.close()
+                print(f'Expanding container: {container}')
+                await expand(container)
+            elif load < 5:
+                print(f'Attempting to shrinking container: {container}')
+                await shrink(container)
 
 if __name__ == '__main__':
     asyncio.run(main())

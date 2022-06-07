@@ -8,6 +8,9 @@ class Droplet:
         self.hostname = data.get('name')
         self.memory = data.get('memory')
         self.vcpus = data.get('vcpus')
+
+        self.container_limit = self.vcpus * 3
+        self.session = requests.Session()
         
         self.public_ip = None
         self.private_ip = None
@@ -19,7 +22,10 @@ class Droplet:
             self.private_ip = data.get('networks').get('v4')[1].get('ip_address')
 
     def available_slots(self) -> int:
-        return 4 # Implement later
+        with self.session.get(f'http://{self.private_ip}/containers/json') as resp:
+            if resp.status_code == 200:
+                return self.container_limit - len(resp.json())
+        return 0
 
 class DigitalOcean:
     def __init__(self, api_key : str) -> None:
@@ -28,12 +34,15 @@ class DigitalOcean:
         self.session = requests.Session()
         self.session.headers['Authorization'] = f'Bearer {self.api_key}'
 
+    def delete(self, droplet : Droplet) -> bool:
+        with self.session.delete(f'{self.endpoint}/droplets/{droplet.id}') as resp:
+            if resp.status_code == 204:
+                return True
+
     def fetch_droplet(self, id : str) -> Droplet:
         with self.session.get(f'{self.endpoint}/droplets/{id}') as resp:
             if resp.status_code == 200:
                 return Droplet(resp.json().get('droplet'))
-        
-        return None
 
     def ssh_key(self, fingerprint : str):
         with self.session.get(f'{self.endpoint}/account/keys/{fingerprint}') as resp:

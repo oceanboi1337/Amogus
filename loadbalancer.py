@@ -29,18 +29,19 @@ class Loadbalancer:
         # Loadbalance the loadbalancer later.
 
     def register_droplet(self, droplet : Droplet):
-        path = f'nginx/droplet-loadbalancer/{droplet.id}'
+        path = f'nginx/container-loadbalancer/{droplet.id}'
         if not os.path.exists(path):
             os.mkdir(path)
 
     def add(self, domain : str, node : Union[Droplet, Container]):
         if type(node) == Droplet or type(node) == Container:
-            path = f'nginx/main-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/droplet-loadbalancer/{node.droplet.id}/{domain}'
+            path = f'nginx/droplet-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/container-loadbalancer/{node.droplet.id}/{domain}'
             mode = 'w+' if not os.path.exists(path) else 'r+'
 
             with open(path, mode) as f:
                 if (config := f.read().split('\n')) and mode == 'r+':
-                    config.insert(2, f'server {node.private_ip};')
+                    if f'server {node.private_ip};' not in config:
+                        config.insert(2, f'server {node.private_ip};')
                     config = self.indent(config)
                 else:
                     with open('nginx/example.conf', 'r') as tmp:
@@ -53,15 +54,21 @@ class Loadbalancer:
         self.reload(node)
 
     def remove(self, domain : str, node : Union[Droplet, Container]):
-        if type(node) == Droplet or type(node) == Container:
-            path = f'nginx/main-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/droplet-loadbalancer/{domain}'
-
-            with open(path, 'r+') as f:
+        if type(node) == Container:
+            with open(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}', 'r+') as f:
                 config = f.read().split('\n')
                 config = [x for x in config if x != f'server {node.private_ip};']
 
-                f.seek(0)
-                f.write(self.indent_config(config))
-                f.truncate()
+                if 'server ' not in config:
+                    f.close()
+                    os.remove(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}')
+                else:
+                    f.seek(0)
+                    f.write(self.indent_config(config))
+                    f.truncate()
+        elif type(node) == Droplet:
+            path = f'nginx/droplet-loadbalancer/{node.id}'
+            if os.path.exists(path):
+                os.remove(path)
 
         self.reload(node)

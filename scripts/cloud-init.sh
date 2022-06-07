@@ -18,7 +18,7 @@ echo 'cloudman ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx' >> /etc/sudo
 # NFS Configuration
 mkdir /home/cloudman/scripts && chown -R cloudman:cloudman /home/cloudman/scripts
 echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstab # ( ͡° ͜ʖ ͡°) MonkaS
-echo "10.114.0.2:/home/backend/Amogus/nginx/droplet-loadbalancer/$DROPLET_ID /etc/nginx/sites-enabled  nfs _netdev 0" >> /etc/fstab
+echo "10.114.0.2:/home/backend/Amogus/nginx/container-loadbalancer/$DROPLET_ID /etc/nginx/sites-enabled  nfs _netdev 0" >> /etc/fstab
 echo '10.114.0.2:/home/backend/Amogus/scripts/remote /home/cloudman/scripts  nfs _netdev 0' >> /etc/fstab
 mount -a
 
@@ -46,4 +46,4 @@ ufw allow from 10.114.0.2 to any port 2375
 ufw enable
 
 # Callback to backend to verify droplet setup.
-curl "http://10.114.0.2/userdata-callback?secret=80c5e536eec8387cccad28b8b17b933832244998d85918abf18cc9bada5d4fe9&droplet_id=$DROPLET_ID"
+curl "http://10.114.0.2/api/callback" -d "droplet_id=$DROPLET_ID"

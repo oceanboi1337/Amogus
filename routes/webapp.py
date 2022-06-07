@@ -23,7 +23,7 @@ def post():
     if file == None or domain == None:
         return flask.render_template('webapp.html'), 400
 
-    file_bytes = file.stream.read() 
+    file_bytes = file.stream.read()
     allowed_types = ['application/zip']
 
     # Check if uploaded file is in the list of allowed file types.

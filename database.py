@@ -66,4 +66,13 @@ class Database(MySQL_Helper):
         return bool(self.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container_id, droplet_id, domain]))
 
     def container_app(self, container_id : str):
-        return self.execute('SELECT * FROM webapps INNER JOIN containers ON webapps.id=containers.webapp AND containers.id=%s', [container_id])
+        return self.execute('SELECT * FROM webapps LEFT JOIN containers ON webapps.id=containers.webapp AND containers.id=%s', [container_id])
+
+    def webapp_containers(self, domain : str):
+        return self.execute('SELECT containers.id AS container, containers.droplet AS droplet FROM containers INNER JOIN webapps ON containers.webapp=webapps.id AND webapps.domain=%s', [domain])
+
+    def delete_container(self, id : str):
+        self.execute('DELETE FROM containers WHERE id=%s', [id])
+
+    def delete_droplet(self, id : str):
+        self.execute('DELETE FROM droplets WHERE id=%s', [id])
