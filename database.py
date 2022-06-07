@@ -1,101 +1,69 @@
-import pymysql, pymysql.cursors, logging, bcrypt
-from typing import List
-from docker import Container
-from digitalocean import Droplet
+from ctypes import Union
+import pymysql, pymysql.cursors, logging, bcrypt, time
+from typing import Dict, List
 
-class Database:
+class MySQL_Helper:
     def __init__(self, host, user, password, db) -> None:
-        self.connection = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
+        self.connection = pymysql.connect(
+            host=host,
+            user=user,
+            password=password,
+            db=db,
+            cursorclass=pymysql.cursors.DictCursor
+        )
 
-    def register_droplet(self, droplet : Droplet) -> bool:
-        with self.connection.cursor() as c:
-            try:
-                c.execute('INSERT INTO droplets (id, hostname, public_ip, private_ip, active) VALUES (%s, %s, %s, %s, %s)', [droplet.id, droplet.hostname, droplet.public_ip, droplet.private_ip, 0])
-                c.connection.commit()
-                return True
-            except Exception as e:
-                logging.error(e)
+    def execute(self, sql : str, params : List = []) -> dict:
+        cursor = self.connection.cursor()
+        results = tuple()
 
-    def activate_droplet(self, droplet : Droplet) -> bool:
-        with self.connection.cursor() as c:
-            try:
-                c.execute('UPDATE droplets SET public_ip=%s, private_ip=%s, active=%s', [droplet.public_ip, droplet.private_ip, 1])
-                c.connection.commit()
-                return True
-            except Exception as e:
-                logging.error(e)
+        try:
+            cursor.execute(sql, params)
+            self.connection.commit()
+            results = cursor.fetchall()
+            results = results if not cursor.lastrowid else cursor.lastrowid
+        except Exception as e:
+            self.connection.rollback()
+            logging.error(f'SQL: {sql}\n{params}\n{e}')
+        finally:
+            cursor.close()
+            return results
 
-    def droplets(self, active=True) -> List[str]:
-        with self.connection.cursor() as c:
-            try:
-                c.execute('SELECT id FROM droplets WHERE active=%s', [active])
-                return [x.get('id') for x in c.fetchall()]
-            except Exception as e:
-                logging.error(e)
+class Database(MySQL_Helper):
+    def __init__(self, host, user, password, db) -> None:
+        super().__init__(host, user, password, db)
+
+    def new_droplet(self, id : str, hostname : str) -> bool:
+        return bool(self.execute('INSERT INTO droplets (id, hostname, created_at) VALUES (%s, %s, %s)', [id, hostname, time.time()]))
+
+    def droplet_exists(self, droplet_id) -> bool:
+        return bool(self.execute('SELECT id FROM droplets WHERE id=%s', [droplet_id]))
+
+    def verify_droplet(self, droplet_id : str, private_ip : str, public_ip : str) -> bool:
+        return bool(self.execute('UPDATE droplets SET public_ip=%s, private_ip=%s, active=%s WHERE id=%s', [private_ip, public_ip, 1, droplet_id]))
+
+    def droplets(self, active=True):
+        return self.execute('SELECT * FROM droplets WHERE active=%s', [active])
 
     def login(self, email : str, password : str) -> int:
-        with self.connection.cursor() as c:
-            try:
-                c.execute('SELECT id, password FROM customers WHERE email=%s LIMIT 1', [email])
+        if resp := self.execute('SELECT id, password FROM customers WHERE email=%s LIMIT 1', [email]):
+            if bcrypt.checkpw(password.encode(), resp[0].get('password').encode()):
+                return resp[0].get('id')
+        return None
 
-                row = c.fetchone()
-                if row != None and bcrypt.checkpw(password.encode(), row.get('password').encode()):
-                    return row.get('id')
-            except Exception as e:
-                logging.error(e)
-        
     def register(self, email, password) -> bool:
-        with self.connection.cursor() as c:
-            try:
-                c.execute('INSERT INTO customers (email, password) VALUES (%s, %s)', [email, password])
-                c.connection.commit()
-                return True
-            except Exception as e:
-                logging.error(e)
+        return bool(self.execute('INSERT INTO customers (email, password) VALUES (%s, %s)', [email, password]))
 
     def add_webapp(self, customer_id : int, domain : str) -> bool:
-        success = True
-        with self.connection.cursor() as c:
-            try:
-                c.execute('SELECT * FROM webapps WHERE domain=%s', [domain])
-                if len(c.fetchall()) > 0:
-                    success = False
-                else:
-                    c.execute('INSERT INTO webapps (customer_id, domain) VALUES (%s, %s)', [customer_id, domain])
-                    c.connection.commit()
-            except Exception as e:
-                logging.error(e)
-        return success
+        return bool(self.execute('INSERT INTO webapps (customer_id, domain) VALUES (%s, %s)', [customer_id, domain]))
 
-    def activate_webapp(self, domain : str):
-        with self.connection.cursor() as c:
-            try:
-                c.execute('UPDATE webapps SET active=1 WHERE domain=%s', [domain])
-                c.connection.commit()
-            except Exception as e:
-                logging.error(e)
+    def activate_webapp(self, domain : str) -> bool:
+        return bool(self.execute('UPDATE webapps SET active=1 WHERE domain=%s', [domain]))
 
     def webapps(self, active=True):
-        with self.connection.cursor() as c:
-            try:
-                c.execute('SELECT * FROM webapps WHERE active=%s', [1 if active else 0])
-                return c.fetchall()
-            except Exception as e:
-                logging.error(e)
+        return self.execute('SELECT * FROM webapps WHERE active=%s', [1 if active else 0])
 
-    def register_container(self, domain : str, container : Container):
-        with self.connection.cursor() as c:
-            try:
-                #logging.debug(c.mogrify('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container.id, container.droplet.id, domain]))
-                c.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container.id, container.droplet.id, domain])
-                c.connection.commit()
-            except Exception as e:
-                logging.error(e)
+    def new_container(self, domain : str, container_id : str, droplet_id : str) -> bool:
+        return bool(self.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container_id, droplet_id, domain]))
 
-    def container_app(self, container : str):
-        with self.connection.cursor() as c:
-            try:
-                c.execute('SELECT domain FROM webapps INNER JOIN containers ON webapps.id=containers.webapp')
-                return c.fetchone().get('domain')
-            except Exception as e:
-                logging.error(e)
+    def container_app(self, container_id : str):
+        return self.execute('SELECT * FROM webapps INNER JOIN containers ON webapps.id=containers.webapp AND containers.id=%s', [container_id])

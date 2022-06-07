@@ -1,6 +1,8 @@
 import logging
 from typing import List
-import requests, digitalocean, database
+import requests
+
+from digitalocean import Droplet
 
 class BadParameter(Exception): pass
 class ImageNotFound(Exception): pass
@@ -8,7 +10,7 @@ class Conflict(Exception): pass
 class ServerError(Exception): pass
 
 class Container:
-    def __init__(self, droplet : 'digitalocean.Droplet', raw_data) -> None:
+    def __init__(self, droplet : 'Droplet', raw_data) -> None:
         self.droplet = droplet
         self.id = raw_data.get('Id')
         self.session = requests.Session()
@@ -25,10 +27,10 @@ class Container:
         return False
 
 class Docker:
-    def __init__(self, database : 'database.Database') -> None:
-        self.database = database
+    def __init__(self) -> None:
+        pass
 
-    def create(self, domain : str, droplet : 'digitalocean.Droplet') -> Container:
+    def create(self, domain : str, droplet : 'Droplet', start=True) -> 'Container':
         settings = {
             'Image': 'nginx:alpine',
             'HostConfig': {
@@ -42,7 +44,7 @@ class Docker:
         with requests.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
             if resp.status_code == 201:
                 container = Container(droplet, resp.json())
-                self.database.register_container(domain, container)
+                if start: container.start()
                 return container
 
             elif resp.status_code == 400: raise BadParameter
