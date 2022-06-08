@@ -1,9 +1,11 @@
 server
 {
+    listen  80  proxy_protocol;
     server_name _;
 
     location /
     {
-        return 444;
+        return 200 'Amogus';
+        add_header Content-Type text/plain;
     }
 }

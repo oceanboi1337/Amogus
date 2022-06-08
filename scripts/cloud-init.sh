@@ -16,8 +16,9 @@ chown -R cloudman:cloudman /home/cloudman
 echo 'cloudman ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx' >> /etc/sudoers
 
 # NFS Configuration
-mkdir /home/cloudman/scripts && chown -R cloudman:cloudman /home/cloudman/scripts
+mkdir /home/cloudman/scripts && mkdir /home/cloudman/nginx && chown -R cloudman:cloudman /home/cloudman
 echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstab # ( ͡° ͜ʖ ͡°) MonkaS
+echo "10.114.0.2:/home/backend/Amogus/nginx /home/cloudman/nginx  nfs _netdev 0" >> /etc/fstab
 echo "10.114.0.2:/home/backend/Amogus/nginx/container-loadbalancer/$DROPLET_ID /etc/nginx/sites-enabled  nfs _netdev 0" >> /etc/fstab
 echo '10.114.0.2:/home/backend/Amogus/scripts/remote /home/cloudman/scripts  nfs _netdev 0' >> /etc/fstab
 mount -a

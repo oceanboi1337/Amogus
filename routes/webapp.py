@@ -1,3 +1,4 @@
+from venv import create
 from extensions import database, digitalocean, docker, loadbalancer
 from digitalocean import CloudImage, CloudRegion, CloudSize
 import flask, magic
@@ -41,7 +42,9 @@ def post():
 
     # Check if there is any available droplets in the database.
     # If there also is no droplet being created at the moment, create a new droplet
-    if (droplets := database.droplets(active=True)) == [] and not len(database.droplets(active=False)) > 0:
+    droplets = database.droplets()
+
+    if len(droplets) <= 0 and len(database.droplets(active=False)) <= 0:
         if droplet := digitalocean.create_droplet('app-node-1', CloudSize.Cpu2Gb2, CloudImage.Ubuntu_22_04_LTS_x64, CloudRegion.Frankfurt1, ['app-node']):
             database.new_droplet(droplet.id, droplet.hostname)
             loadbalancer.register_droplet(droplet)
@@ -49,13 +52,13 @@ def post():
         return flask.render_template('webapp.html', message='Failed to deploy your WebApp, try again later')
 
     # Iterate every droplet in the database to try create a container on it.
-    for droplet in droplets:
+    for db_droplet in droplets:
 
-        if (droplet := digitalocean.fetch_droplet(droplet.get('id'))) == None:
+        droplet = digitalocean.fetch_droplet(db_droplet.get('id'))
+        if droplet == None:
             continue
 
-        if droplet.available_slots() > 0: # Implement later
-            if container := docker.create(domain, droplet):
+        if droplet.available_slots() > 0 and (container := docker.create(domain, droplet)):
 
                 database.new_container(domain, container.id, droplet.id)
                 database.activate_webapp(domain)

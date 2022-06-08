@@ -1,4 +1,4 @@
-import asyncio, aiohttp
+import asyncio, aiohttp, time, multiprocessing
 from typing import List
 from enum import Enum
 
@@ -43,11 +43,12 @@ async def get_containers():
     async with aiohttp.ClientSession() as session:
         async with session.get('http://10.114.0.4:2375/containers/json?all=true') as resp:
             if resp.status == 200:
-
+                data = await resp.json()
                 # Convert the JSON responses to Python objects
-                for container in [Container(x['Id'], x['State']) for x in await resp.json()]:
-                    if container.state == Container.State.running:
-                        yield container
+                for index, container in enumerate([Container(x['Id'], x['State']) for x in data]):
+                    if time.time() - data[index].get('Created') > 5:
+                        if container.state == Container.State.running:
+                            yield container
 
                     elif container.state == Container.State.dead: await container.delete()
                     elif container.state == Container.State.exited:
@@ -93,28 +94,30 @@ async def average_load(containers : List[Container], time : int):
 
 async def expand(container):
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
+        async with session.post(f'http://10.114.0.2/api/monitor', data={'container': container}) as resp:
             if resp.status == 201 or resp.status == 202:
-                print(await resp.json())
+                pass
+            print(await resp.json(), resp.status)
 
 async def shrink(container):
     async with aiohttp.ClientSession() as session:
-        async with session.delete(f'http://10.114.0.2/api/monitor', json={'container': container}) as resp:
+        async with session.delete(f'http://10.114.0.2/api/monitor', data={'container': container}) as resp:
             if resp.status == 201 or resp.status == 202:
-                print(await resp.json())
+                pass
+            print(await resp.json(), resp.status)
 
 async def main():
-    cpu_limit = 25 # CPU usage limit each container can use is 25%
+    cpu_limit = 80 / (multiprocessing.cpu_count() * 3) # CPU usage limit each container can use
 
     while 1:
 
         # Gets the average CPU usage of a container over 5 seconds
-        async for container, load in average_load([container async for container in get_containers()], time=5):
+        async for container, load in average_load([container async for container in get_containers()], time=2):
             
             if load > cpu_limit:
                 print(f'Expanding container: {container}')
                 await expand(container)
-            elif load < 5:
+            elif load < (cpu_limit / 100) * 25:
                 print(f'Attempting to shrinking container: {container}')
                 await shrink(container)
 

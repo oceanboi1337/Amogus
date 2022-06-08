@@ -10,6 +10,8 @@ class Droplet:
         self.vcpus = data.get('vcpus')
 
         self.container_limit = self.vcpus * 3
+        self.cpu_limit = (100 / self.container_limit)
+        
         self.session = requests.Session()
         
         self.public_ip = None

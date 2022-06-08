@@ -48,17 +48,21 @@ class Docker:
         settings = {
             'Image': 'nginx:alpine',
             'HostConfig': {
-                'Binds': [f'/var/www/{domain}:/usr/share/nginx/html'],
+                'Binds': [f'/var/www/{domain}:/usr/share/nginx/html', '/home/cloudman/nginx/nginx.conf:/etc/nginx/nginx.conf'],
                 'Memory': (1024 ** 2) * 500,
                 'MemorySwap': (1024 ** 3),
-                'CpuQuota': 25000
+                'CpuQuota': int(droplet.cpu_limit * 1000)
             }
         }
+
+        logging.debug(settings)
 
         with self.session.post(f'http://{droplet.private_ip}:2375/containers/create', json=settings) as resp:
             if resp.status_code == 201:
                 container = Container(droplet, resp.json())
-                if start: container.start()
+                if start:
+                    if not container.start():
+                        return None
                 return container
 
             elif resp.status_code == 400: raise BadParameter

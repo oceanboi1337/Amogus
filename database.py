@@ -12,15 +12,20 @@ class MySQL_Helper:
             cursorclass=pymysql.cursors.DictCursor
         )
 
-    def execute(self, sql : str, params : List = []) -> dict:
+    def execute(self, sql : str, params : List = [], fetch=2) -> dict:
         cursor = self.connection.cursor()
         results = tuple()
 
         try:
             cursor.execute(sql, params)
             self.connection.commit()
-            results = cursor.fetchall()
+
+            if fetch == 1:
+                results = cursor.fetchone()
+            else:
+                results = cursor.fetchall()
             results = results if not cursor.lastrowid else cursor.lastrowid
+            logging.debug(results)
         except Exception as e:
             self.connection.rollback()
             logging.error(f'SQL: {sql}\n{params}\n{e}')
@@ -42,7 +47,7 @@ class Database(MySQL_Helper):
         return bool(self.execute('UPDATE droplets SET public_ip=%s, private_ip=%s, active=%s WHERE id=%s', [private_ip, public_ip, 1, droplet_id]))
 
     def droplets(self, active=True):
-        return self.execute('SELECT * FROM droplets WHERE active=%s', [active])
+        return self.execute('SELECT * FROM droplets WHERE active=%s ORDER BY containers ASC', [active])
 
     def login(self, email : str, password : str) -> int:
         if resp := self.execute('SELECT id, password FROM customers WHERE email=%s LIMIT 1', [email]):
@@ -63,16 +68,21 @@ class Database(MySQL_Helper):
         return self.execute('SELECT * FROM webapps WHERE active=%s', [1 if active else 0])
 
     def new_container(self, domain : str, container_id : str, droplet_id : str) -> bool:
-        return bool(self.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container_id, droplet_id, domain]))
+        self.execute('INSERT INTO containers (id, droplet, webapp) SELECT %s, %s, webapps.id FROM webapps WHERE webapps.domain=%s', [container_id, droplet_id, domain])
+        self.execute('UPDATE droplets SET containers=containers+1 WHERE id=%s', [droplet_id])
 
     def container_app(self, container_id : str):
-        return self.execute('SELECT * FROM webapps LEFT JOIN containers ON webapps.id=containers.webapp AND containers.id=%s', [container_id])
+        return self.execute('SELECT domain FROM webapps INNER JOIN containers ON webapps.id=containers.webapp AND containers.id=%s', [container_id], fetch=1)
 
     def webapp_containers(self, domain : str):
         return self.execute('SELECT containers.id AS container, containers.droplet AS droplet FROM containers INNER JOIN webapps ON containers.webapp=webapps.id AND webapps.domain=%s', [domain])
 
     def delete_container(self, id : str):
-        self.execute('DELETE FROM containers WHERE id=%s', [id])
+        if self.execute('DELETE FROM containers WHERE id=%s', [id]):
+            return self.execute('UPDATE droplets INNER JOIN containers ON containers.droplet=droplets.id SET droplets.containers=droplets.containers-1 WHERE containers.id=%ss', [id])
 
     def delete_droplet(self, id : str):
-        self.execute('DELETE FROM droplets WHERE id=%s', [id])
+        return self.execute('DELETE FROM droplets WHERE id=%s', [id])
+
+    def container_to_droplet(self, id : str):
+        return self.execute('SELECT droplet FROM containers WHERE id=%s', [id], 1)
