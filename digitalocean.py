@@ -1,6 +1,6 @@
 from models import CloudImage, CloudRegion, CloudSize
 from typing import List
-import requests
+import requests, logging
 
 class Droplet:
     def __init__(self, data) -> None:
@@ -11,7 +11,7 @@ class Droplet:
 
         self.container_limit = self.vcpus * 3
         self.cpu_limit = (100 / self.container_limit)
-        
+
         self.session = requests.Session()
         
         self.public_ip = None
@@ -26,7 +26,9 @@ class Droplet:
     def available_slots(self) -> int:
         with self.session.get(f'http://{self.private_ip}:2375/containers/json') as resp:
             if resp.status_code == 200:
+                logging.error(len(resp.json()))
                 return self.container_limit - len(resp.json())
+        logging.error(0)
         return 0
 
 class DigitalOcean:
@@ -58,7 +60,8 @@ class DigitalOcean:
                 'size': size,
                 'image': image,
                 'ssh_keys': [
-                    'f4:bb:99:fe:80:77:fb:ff:1c:e7:3c:dd:12:9c:9c:af'   # System Administrator
+                    'f4:bb:99:fe:80:77:fb:ff:1c:e7:3c:dd:12:9c:9c:af',   # System Administrator
+                    'd6:29:bb:63:6e:4f:37:07:e1:f2:9a:92:6d:21:3d:12'    # System Administrator 2
                 ],
                 'tags': tags,
                 'user_data': f.read().replace('BACKEND_SSH_KEY', self.ssh_key('96:9f:f7:09:fc:2d:e7:bb:76:d3:fa:4d:2e:08:42:5b')) # backend@backend

@@ -44,7 +44,7 @@ class Database(MySQL_Helper):
         return bool(self.execute('SELECT id FROM droplets WHERE id=%s', [droplet_id]))
 
     def verify_droplet(self, droplet_id : str, private_ip : str, public_ip : str) -> bool:
-        return bool(self.execute('UPDATE droplets SET public_ip=%s, private_ip=%s, active=%s WHERE id=%s', [private_ip, public_ip, 1, droplet_id]))
+        return bool(self.execute('UPDATE droplets SET public_ip=%s, private_ip=%s, active=%s WHERE id=%s', [public_ip, private_ip, 1, droplet_id]))
 
     def droplets(self, active=True):
         return self.execute('SELECT * FROM droplets WHERE active=%s ORDER BY containers ASC', [active])
@@ -78,11 +78,14 @@ class Database(MySQL_Helper):
         return self.execute('SELECT containers.id AS container, containers.droplet AS droplet FROM containers INNER JOIN webapps ON containers.webapp=webapps.id AND webapps.domain=%s', [domain])
 
     def delete_container(self, id : str):
-        if self.execute('DELETE FROM containers WHERE id=%s', [id]):
-            return self.execute('UPDATE droplets INNER JOIN containers ON containers.droplet=droplets.id SET droplets.containers=droplets.containers-1 WHERE containers.id=%ss', [id])
+        self.execute('UPDATE droplets INNER JOIN containers ON containers.droplet=droplets.id SET droplets.containers=droplets.containers-1 WHERE containers.id=%s', [id])
+        return self.execute('DELETE FROM containers WHERE id=%s', [id])
 
     def delete_droplet(self, id : str):
         return self.execute('DELETE FROM droplets WHERE id=%s', [id])
 
     def container_to_droplet(self, id : str):
         return self.execute('SELECT droplet FROM containers WHERE id=%s', [id], 1)
+
+    def container_relations(self, container : str):
+        return self.execute('SELECT containers.id FROM containers INNER JOIN webapps ON containers.webapp=webapps.id AND containers.id=%s', [container])

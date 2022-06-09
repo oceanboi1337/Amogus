@@ -13,7 +13,7 @@ async def get_containers():
         async with s.get(f'http://{private}:2375/containers/json') as resp:
             if resp.status == 200:
                 containers = await resp.json()
-                containers = [x for x in containers if time.time() - x.get('Created') > 5]
+                containers = [x for x in containers if time.time() - x.get('Created') > 30]
                 return containers
 
 # https://docs.docker.com/engine/api/v1.41/#operation/ContainerStats
