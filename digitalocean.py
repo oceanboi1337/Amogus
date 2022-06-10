@@ -9,8 +9,8 @@ class Droplet:
         self.memory = data.get('memory')
         self.vcpus = data.get('vcpus')
 
-        self.container_limit = self.vcpus * 3
-        self.cpu_limit = (100 / self.container_limit)
+        self.container_limit = self.vcpus * 2
+        self.cpu_limit = (90 / self.container_limit)
 
         self.session = requests.Session()
         

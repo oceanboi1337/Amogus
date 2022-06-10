@@ -55,22 +55,24 @@ class Loadbalancer:
         self.reload(node)
 
     def remove(self, domain : str, node : Union[Droplet, Container]):
-        if type(node) == Container:
-            with open(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}', 'r+') as f:
+        if type(node) == Droplet or type(node) == Container:
+            path = f'nginx/droplet-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/container-loadbalancer/{node.droplet.id}/{domain}'
+            mode = 'w+' if not os.path.exists(path) else 'r+'
+
+            with open(path, mode) as f:
                 config = f.read().replace('\t', '').split('\n')
                 config = [x for x in config if node.private_ip not in x]
-                logging.debug(config)
 
                 if 'server ' not in ''.join(config):
                     f.close()
-                    os.remove(f'nginx/container-loadbalancer/{node.droplet.id}/{domain}')
+                    os.remove(path)
                 else:
                     f.seek(0)
                     f.write(self.indent(config))
                     f.truncate()
-        elif type(node) == Droplet:
+        """elif type(node) == Droplet:
             path = f'nginx/droplet-loadbalancer/{node.id}'
             if os.path.exists(path):
-                os.remove(path)
+                os.remove(path)"""
 
         self.reload(node)

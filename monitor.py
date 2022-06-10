@@ -80,7 +80,7 @@ async def shrink(domain : str) -> bool:
             if droplet := digitalocean.fetch_droplet(droplet.get('droplet')):
                 if container := docker.container(container.get('container'), droplet):
                     container.delete()
-                    loadbalancer.remove(container, droplet)
+                    loadbalancer.remove(domain, container)
                     database.delete_container(container.id)
             else:
                 print('Failed to fetch droplet', droplet)
@@ -92,7 +92,7 @@ async def main():
     while 1:
         if droplets := database.droplets(active=True):
             for domain, load in await collector(droplets):
-                cpu_limit = (50 / (2 * 2))
+                cpu_limit = (90 / (2 * 4))
                 if load >= cpu_limit * 0.6:
                     print(f'Domain ({domain}) needs expansion, average load is: {load} / {cpu_limit}')
                     if await expand(domain, droplets):

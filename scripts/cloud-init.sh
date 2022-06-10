@@ -4,6 +4,10 @@
 PRIVATE_IP=$(curl -s http://169.254.169.254/metadata/v1.json | python3 -c "import sys, json; print(json.load(sys.stdin)['interfaces']['private'][0]['ipv4']['ip_address'])")
 DROPLET_ID=$(curl -s http://169.254.169.254/metadata/v1.json | python3 -c "import sys, json; print(json.load(sys.stdin)['droplet_id'])")
 
+# Network Optimization
+echo "600000" > /proc/sys/net/netfilter/nf_conntrack_max
+echo "net.netfilter.nf_conntrack_max = 600000" >> /etc/sysctl.conf
+
 # Package Installation.
 apt update -y
 apt install nginx docker.io nfs-common -y
