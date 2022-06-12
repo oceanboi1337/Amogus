@@ -18,7 +18,8 @@ class Loadbalancer:
         return '\n'.join(config)
 
     def reload(self, node : Union[Droplet, Container]):
-        cmd = f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{node.droplet.private_ip} "sudo systemctl reload nginx"'
+        private_ip = node.droplet.private_ip if type(node) == Container else node
+        cmd = f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{private_ip} "sudo systemctl reload nginx"'
         
         # Check if the node is a container, this will make it so only that app-host server gets reloaded.
         if type(node) == Container:

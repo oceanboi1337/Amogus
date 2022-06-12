@@ -1,6 +1,6 @@
 import flask, os, logging
 
-logging.basicConfig(filename='backend.log', level=logging.ERROR, format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d in function %(funcName)s]\n%(message)s')
+logging.basicConfig(filename='backend.log', level=logging.DEBUG, format='%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d in function %(funcName)s]\n%(message)s')
 app = flask.Flask(__name__, static_folder='static')
 
 # Flask Config
