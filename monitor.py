@@ -71,6 +71,7 @@ async def expand(domain : str, droplets : list) -> bool:
     if len(db_droplets_inactive) <= 0:
         if droplet := digitalocean.create_droplet(f'app-node-{(len(droplets)+len(db_droplets_inactive))+1}', CloudSize.Cpu2Gb2, CloudImage.Ubuntu_22_04_LTS_x64, CloudRegion.Frankfurt1, ['app-node']):
             database.new_droplet(droplet.id, droplet.hostname)
+            loadbalancer.register_droplet(droplet)
             return True
 
 async def shrink(domain : str) -> bool:
@@ -81,12 +82,12 @@ async def shrink(domain : str) -> bool:
                 if container := docker.container(container.get('container'), droplet):
                     container.delete()
                     loadbalancer.remove(domain, container)
+                    loadbalancer.remove(domain, droplet)
                     database.delete_container(container.id)
             else:
                 print('Failed to fetch droplet', droplet)
         else:
             print('Failed to convert container to droplet', droplet, containers)
-
 
 async def main():
     while 1:
@@ -95,15 +96,16 @@ async def main():
                 cpu_limit = (90 / (2 * 4))
                 if load >= cpu_limit * 0.6:
                     print(f'Domain ({domain}) needs expansion, average load is: {load} / {cpu_limit}')
-                    if await expand(domain, droplets):
-                        print(f'Expanded domain ({domain})')
+                    asyncio.create_task(expand(domain, droplets))
+                    #if await expand(domain, droplets):
                 elif load <= cpu_limit * 0.2:
                     print(f'Domain ({domain}) should shrink, average load is {load} / {cpu_limit}')
-                    await shrink(domain)
+                    #await shrink(domain)
+                    asyncio.create_task(shrink(domain))
                 else:
                     print(f'Domain ({domain}) average load is {load} / {cpu_limit}, its in a good spot, keep it here')
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
 
 if __name__ == '__main__':
     asyncio.run(main())

@@ -4,19 +4,20 @@ import requests, logging
 
 class Droplet:
     def __init__(self, data) -> None:
-        self.id = data.get('id')
+        self.id = data.get('id') # The ID of the server on DigitalOcean
         self.hostname = data.get('name')
         self.memory = data.get('memory')
         self.vcpus = data.get('vcpus')
 
         self.container_limit = self.vcpus * 2
-        self.cpu_limit = (90 / self.container_limit)
+        self.cpu_limit = (90 / self.container_limit) # All containers together should only be able to use 90% of the total CPU Usage
 
         self.session = requests.Session()
         
         self.public_ip = None
         self.private_ip = None
 
+        # The network configuration is only accessible once the server has been booted.
         if len(data.get('networks').get('v4')) > 0:
             self.public_ip = data.get('networks').get('v4')[0].get('ip_address')
             
@@ -24,11 +25,12 @@ class Droplet:
             self.private_ip = data.get('networks').get('v4')[1].get('ip_address')
 
     def available_slots(self) -> int:
+        # Send API request to the server's Docker service to get the running containers.
         with self.session.get(f'http://{self.private_ip}:2375/containers/json') as resp:
             if resp.status_code == 200:
-                logging.error(len(resp.json()))
+                # Return the amount of available container slots, calcualted by ((vCPUs * 2) - Containers Running)
                 return self.container_limit - len(resp.json())
-        logging.error(0)
+        # Return 0 if the Docker API returned an error.
         return 0
 
 class DigitalOcean:

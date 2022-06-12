@@ -1,7 +1,7 @@
 from typing import List, Union
 from digitalocean import Droplet
 from docker import Container
-import os, logging
+import os, logging, subprocess
 
 class Loadbalancer:
     def __init__(self, loadbalancers : List[str]) -> None:
@@ -20,10 +20,10 @@ class Loadbalancer:
     # Clean later.
     def reload(self, node : Union[Droplet, Container]):
         if type(node) == Container:
-            os.system(f'/bin/ssh -i ~/.ssh/id_rsa -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{node.droplet.private_ip} "sudo systemctl reload nginx"')
+            subprocess.Popen(f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{node.droplet.private_ip} "sudo systemctl reload nginx"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         elif type(node) == Droplet:
             for host in self.loadbalancers:
-                os.system(f'/bin/ssh -i ~/.ssh/id_rsa -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{host} "sudo systemctl reload nginx"')
+                subprocess.Popen(f'/bin/ssh -i ~/.ssh/id_rsa -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{host} "sudo systemctl reload nginx"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Loadbalance the loadbalancer later?
 
