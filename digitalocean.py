@@ -40,20 +40,6 @@ class DigitalOcean:
         self.session = requests.Session()
         self.session.headers['Authorization'] = f'Bearer {self.api_key}'
 
-    def delete(self, droplet : Droplet) -> bool:
-        with self.session.delete(f'{self.endpoint}/droplets/{droplet.id}') as resp:
-            if resp.status_code == 204:
-                return True
-
-    def fetch_droplet(self, id : str) -> Droplet:
-        with self.session.get(f'{self.endpoint}/droplets/{id}') as resp:
-            if resp.status_code == 200:
-                return Droplet(resp.json().get('droplet'))
-
-    def ssh_key(self, fingerprint : str):
-        with self.session.get(f'{self.endpoint}/account/keys/{fingerprint}') as resp:
-            return resp.json()['ssh_key']['public_key']
-
     def create_droplet(self, hostname, size : CloudSize, image : CloudImage, region : CloudRegion, tags : List[str]) -> Droplet:
         with open('scripts/cloud-init.sh', 'r') as f:
             data = {
@@ -74,3 +60,17 @@ class DigitalOcean:
                 return Droplet(resp.json()['droplet'])
         
         return None
+
+    def delete(self, droplet : Droplet) -> bool:
+        with self.session.delete(f'{self.endpoint}/droplets/{droplet.id}') as resp:
+            if resp.status_code == 204:
+                return True
+
+    def fetch_droplet(self, id : str) -> Droplet:
+        with self.session.get(f'{self.endpoint}/droplets/{id}') as resp:
+            if resp.status_code == 200:
+                return Droplet(resp.json().get('droplet'))
+
+    def ssh_key(self, fingerprint : str):
+        with self.session.get(f'{self.endpoint}/account/keys/{fingerprint}') as resp:
+            return resp.json()['ssh_key']['public_key']

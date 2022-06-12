@@ -21,15 +21,14 @@ echo 'cloudman ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx' >> /etc/sudo
 
 # NFS Configuration
 mkdir /home/cloudman/scripts && mkdir /home/cloudman/nginx && chown -R cloudman:cloudman /home/cloudman
-echo '10.114.0.2:/var/www/ /var/www  nfs _netdev 0' >> /etc/fstab # ( ͡° ͜ʖ ͡°) MonkaS
-echo "10.114.0.2:/home/backend/Amogus/nginx /home/cloudman/nginx  nfs _netdev 0" >> /etc/fstab
-echo "10.114.0.2:/home/backend/Amogus/nginx/container-loadbalancer/$DROPLET_ID /etc/nginx/sites-enabled  nfs _netdev 0" >> /etc/fstab
-echo '10.114.0.2:/home/backend/Amogus/scripts/remote /home/cloudman/scripts  nfs _netdev 0' >> /etc/fstab
+echo '10.114.0.2:/var/www/ /var/www  nfs defaults 0' >> /etc/fstab # ( ͡° ͜ʖ ͡°) MonkaS
+echo "10.114.0.2:/home/backend/Amogus/nginx /home/cloudman/nginx  nfs defaults 0" >> /etc/fstab
+echo "10.114.0.2:/home/backend/Amogus/nginx/container-loadbalancer/$DROPLET_ID /etc/nginx/sites-enabled  nfs defaults 0" >> /etc/fstab
 mount -a
 
 # Swap Memory Configuration.
 fallocate -l 4G /swapfile
-dd if=/dev/zero of=/swapfile bs=512M count=8
+dd if=/dev/zero of=/swapfile bs=500M count=8
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile

@@ -17,13 +17,17 @@ class Loadbalancer:
 
         return '\n'.join(config)
 
-    # Clean later.
     def reload(self, node : Union[Droplet, Container]):
+        cmd = f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{node.droplet.private_ip} "sudo systemctl reload nginx"'
+        
+        # Check if the node is a container, this will make it so only that app-host server gets reloaded.
         if type(node) == Container:
-            subprocess.Popen(f'ssh -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{node.droplet.private_ip} "sudo systemctl reload nginx"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Check if the node is a app-host, this will reload every load balancer available.
         elif type(node) == Droplet:
             for host in self.loadbalancers:
-                subprocess.Popen(f'/bin/ssh -i ~/.ssh/id_rsa -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking no" cloudman@{host} "sudo systemctl reload nginx"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Loadbalance the loadbalancer later?
 
@@ -34,23 +38,28 @@ class Loadbalancer:
 
     def add(self, domain : str, node : Union[Droplet, Container]):
         if type(node) == Droplet or type(node) == Container:
+            
+            # The path is changed based on the type of node passed to the function.
+            # If the node is a load balancer, the path will be changed to nginx/droplet-loadbalancer
+            # If the node is a app-host, the path will be changed to nginx/container-loadbalancer/app-host-id/example.com
             path = f'nginx/droplet-loadbalancer/{domain}' if type(node) == Droplet else f'nginx/container-loadbalancer/{node.droplet.id}/{domain}'
             mode = 'w+' if not os.path.exists(path) else 'r+'
 
+            # Open the nginx config file
             with open(path, mode) as f:
+
+                # Split the config file by newline and check if the app-host / container ip is already added to the config.
                 if (config := f.read().replace('\t', '').split('\n')) and mode == 'r+':
-                    logging.debug(config)
                     if f'server {node.private_ip};' not in config:
                         config.insert(2, f'server {node.private_ip};')
-                    config = self.indent(config)
+                    config = self.indent(config) # Make the config output pretty :3
                 else:
                     with open('nginx/example.conf', 'r') as tmp:
-                        logging.debug(f'Node: {node}\tDomain: {domain}')
                         config = tmp.read().replace('example.com', domain).replace('127.0.0.1', node.private_ip)
 
-                f.seek(0)
+                f.seek(0) # Move the file cursor to the start to overwrite the current config with the updated one.
                 f.write(config)
-                f.truncate()
+                f.truncate() # Truncate the remaining data in the config file just in case the config is smaller.
 
         self.reload(node)
 

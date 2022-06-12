@@ -28,32 +28,38 @@ async def stats(droplet : dict, container : dict):
                 return [droplet, container, parse(await resp.json())]
 
 async def collector(droplets : List[str]):
-    tasks = [fetch_containers(x) for x in droplets] # Change to private later when database updates
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    tasks = [fetch_containers(x) for x in droplets] # Creates asynchronous tasks to be executed in parallel.
+    results = await asyncio.gather(*tasks, return_exceptions=True) # Wait for all the API requests to finish.
     tasks.clear()
 
+    # Create asynchronous tasks to fetch the stats of the retrieved container ids.
     for index, containers in enumerate(results):
         droplet = droplets[index]
 
         for container in containers:
             tasks.append(stats(droplet, container))
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*tasks, return_exceptions=True) # Wait for the API requests to finish.
 
+    # Function used to calculate the average of a web apps CPU usage.
     def average(l): return (sum(l) / (len(l) if len(l) > 0 else 1))
 
     data = {}
 
+    # Iterate every container, their CPU usage and the droplets its on.
     for droplet, container, load in results:
 
+        # Convert the container id to the web application it belongs to.
         webapp = database.container_app(container)
         domain = webapp.get('domain')
 
         if domain not in data:
             data[domain] = []
 
+        # Add the CPU load of the container to the web app it belong to.
         data[domain].append(load)
 
+    # Format the data do a python dict { "example.com": 10, "example2.com": 5 }
     data = {domain: average(load) for domain, load in data.items()}
 
     return data.items()
